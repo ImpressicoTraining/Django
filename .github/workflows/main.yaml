@@ -24,3 +24,15 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+
+  
+  codeql-analysis:
+    name: CodeQL Python Analysis
+    uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yml@main
+    with:
+      language: python
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
