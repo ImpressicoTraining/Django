@@ -33,4 +33,12 @@ jobs:
       contents: read
       security-events: write
       actions: read
+  
+  django-unit-tests:
+    name: Django Unit Tests
+    uses: ImpressicoTraining/common-workflows/.github/workflows/unit-tests.yaml@main
+    with:
+      application: Django
+      coverage_threshold: 75
+      execution_enabled: false
 
