@@ -28,7 +28,7 @@ jobs:
   
   codeql-analysis:
     name: CodeQL Python Analysis
-    uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yml@main
+    uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yaml@main
     with:
       language: python
     permissions:
