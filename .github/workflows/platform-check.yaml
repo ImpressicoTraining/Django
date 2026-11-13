@@ -13,6 +13,6 @@ permissions:
 jobs:
   reusable-platform-check:
     name: Call centralized platform workflow
-    uses: ImpressicoTraining/common-workflows/.github/workflows/platform-check.yml@main
+    uses: ImpressicoTraining/common-workflows/.github/workflows/platform-check.yaml@main
     permissions:
       contents: read
