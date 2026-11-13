@@ -1,0 +1,26 @@
+
+name: Main workflow
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  allow-to-merge:
+    name: Allow To Merge
+    if: github.event_name == 'pull_request'
+    uses: ImpressicoTraining/common-workflows/.github/workflows/allow-to-merge.yaml@main
+    permissions:
+      contents: read
+      pull-requests: read
