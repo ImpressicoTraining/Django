@@ -1,15 +1,13 @@
 
 [run]
 branch = True
-source = .
+source = src
 omit =
     */migrations/*
     */tests/*
     */test_*.py
     */__pycache__/*
-    */venv/*
     */.venv/*
-    */site-packages/*
 
 [report]
 fail_under = 75
