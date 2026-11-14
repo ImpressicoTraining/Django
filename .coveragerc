@@ -1,0 +1,16 @@
+
+[run]
+branch = True
+source = src
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */.venv/*
+
+[report]
+fail_under = 75
+precision = 2
+show_missing = True
+skip_covered = False
