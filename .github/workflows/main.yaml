@@ -33,8 +33,6 @@ jobs:
       contents: read
       security-events: write
       actions: read
-  
-
 
   django-unit-tests:
     name: Django Unit Tests and Coverage
@@ -53,5 +51,13 @@ jobs:
     permissions:
       contents: read
 
-
+  docker-build:
+    name: Build Django Docker Image
+    uses: ImpressicoTraining/common-workflows/.github/workflows/docker-build.yaml@main
+    with:
+      application: django
+      image_name: impressicotraining/django
+      image_tag: ci-${{ github.run_number }}-${{ github.sha }}
+    permissions:
+      contents: read
 
