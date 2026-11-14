@@ -34,11 +34,23 @@ jobs:
       security-events: write
       actions: read
   
+
   django-unit-tests:
-    name: Django Unit Tests
+    name: Django Unit Tests and Coverage
     uses: ImpressicoTraining/common-workflows/.github/workflows/unit-tests.yaml@main
     with:
       application: Django
-      coverage_threshold: 75
-      execution_enabled: false
+
+      setup_command: |
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+        python -m pip install coverage
+
+      test_command: |
+        python -m coverage run --rcfile=.coveragerc manage.py test
+        python -m coverage report --rcfile=.coveragerc --fail-under=75
+
+    permissions:
+      contents: read
+
 
