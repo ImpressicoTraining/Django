@@ -25,7 +25,7 @@ dev = [
 test = [
   "mypy>=1.19.0",
   "ruff>=0.14.8",
-  "faker>=38.2.0",
+  "faker>=40.54.0",
   "pytest-django>=4.12.0",
 ]
 
