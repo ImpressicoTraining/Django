@@ -59,5 +59,3 @@ jobs:
       image_tag: ci-${{ github.run_number }}-${{ github.sha }}
     permissions:
       contents: read
-
-
