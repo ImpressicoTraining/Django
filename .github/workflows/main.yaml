@@ -18,6 +18,10 @@ permissions:
 
 jobs:
 
+  # --------------------------------------------------
+  # 1. Validate PR commit message
+  # --------------------------------------------------
+
   allow-to-merge:
     name: Allow To Merge
     if: github.event_name == 'pull_request'
@@ -25,6 +29,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+
+  # --------------------------------------------------
+  # 2. CodeQL analysis
+  # --------------------------------------------------
 
   codeql-analysis:
     name: CodeQL Analysis
@@ -35,6 +43,10 @@ jobs:
       contents: read
       security-events: write
       actions: read
+
+  # --------------------------------------------------
+  # 3. Unit tests
+  # --------------------------------------------------
 
   unit-tests:
     name: Unit Tests and Coverage
@@ -50,6 +62,10 @@ jobs:
     permissions:
       contents: read
 
+  # --------------------------------------------------
+  # 4. Generate DEV version
+  # --------------------------------------------------
+
   generate-dev-version:
     name: Generate DEV Version
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -60,12 +76,14 @@ jobs:
     permissions:
       contents: write
 
+  # --------------------------------------------------
+  # 5. Docker build and security scan
+  # --------------------------------------------------
+
   docker-build:
     name: Docker Build and Security Scan
-
     needs:
       - generate-dev-version
-
     if: |
       always() &&
       (
@@ -77,15 +95,88 @@ jobs:
           needs.generate-dev-version.result == 'success'
         )
       )
-
     uses: ImpressicoTraining/common-workflows/.github/workflows/docker-build.yaml@main
-
     with:
       application: django
       image_name: impressicotraining/django
       image_tag: ${{ github.event_name == 'push' && needs.generate-dev-version.outputs.version || format('ci-{0}-{1}', github.run_number, github.sha) }}
       upload_image_artifact: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       artifact_name: django-image
-
     permissions:
       contents: read
+
+  # --------------------------------------------------
+  # 6. Create and push version tag
+  # --------------------------------------------------
+
+  create-version-tag:
+    name: Create and Push Version Tag
+
+    needs:
+      - codeql-analysis
+      - unit-tests
+      - generate-dev-version
+      - docker-build
+
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.codeql-analysis.result == 'success' &&
+      needs.unit-tests.result == 'success' &&
+      needs.generate-dev-version.result == 'success' &&
+      needs.docker-build.result == 'success'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout application repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.TAG_PUSH_TOKEN }}
+
+      - name: Create and push version tag
+        shell: bash
+        env:
+          VERSION: ${{ needs.generate-dev-version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$VERSION" ]]; then
+            echo "ERROR: Generated version is empty."
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "ERROR: Tag already exists: $VERSION"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$VERSION" "$GITHUB_SHA" \
+            -m "Release version $VERSION"
+
+          git push origin "refs/tags/$VERSION"
+
+          echo "Successfully created tag: $VERSION"
+
+      - name: Version tag summary
+        shell: bash
+        env:
+          VERSION: ${{ needs.generate-dev-version.outputs.version }}
+        run: |
+          {
+            echo "## Version Tag Created"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Version | $VERSION |"
+            echo "| Commit | $GITHUB_SHA |"
+            echo "| Branch | main |"
+          } >> "$GITHUB_STEP_SUMMARY"
