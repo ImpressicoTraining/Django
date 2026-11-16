@@ -2,25 +2,111 @@
 name: Publish Workflow
 
 on:
-  workflow_dispatch:
-    inputs:
-      main_run_id:
-        description: Main workflow run ID containing the build artifacts
-        required: true
-        type: string
+  push:
+    tags:
+      - '*-DEV.*'
 
 permissions:
   contents: read
   actions: read
+  packages: write
+  id-token: write
 
 jobs:
 
   # --------------------------------------------------
-  # 1. Download and validate build metadata
+  # 1. Find and wait for the successful Main workflow
+  # --------------------------------------------------
+
+  find-main-run:
+    name: Find Successful Main Workflow Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      actions: read
+      contents: read
+
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+
+    steps:
+      - name: Find and wait for Main workflow completion
+        id: find
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sleep = ms =>
+              new Promise(resolve => setTimeout(resolve, ms));
+
+            const maxAttempts = 36;
+            const delayMs = 10000;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+
+              core.info(`Checking Main workflow. Attempt ${attempt}/${maxAttempts}`);
+
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "main.yaml",
+                head_sha: context.sha,
+                branch: "main",
+                per_page: 100
+              });
+
+              const runs = response.data.workflow_runs
+                .filter(run =>
+                  run.head_sha === context.sha &&
+                  run.head_branch === "main" &&
+                  run.event === "push"
+                )
+                .sort((a, b) =>
+                  new Date(b.created_at) - new Date(a.created_at)
+                );
+
+              if (runs.length > 0) {
+
+                const run = runs[0];
+
+                core.info(`Main workflow run ID: ${run.id}`);
+                core.info(`Status: ${run.status}`);
+                core.info(`Conclusion: ${run.conclusion}`);
+
+                if (run.status === "completed") {
+
+                  if (run.conclusion !== "success") {
+                    core.setFailed(
+                      `Main workflow did not succeed. Conclusion: ${run.conclusion}`
+                    );
+                    return;
+                  }
+
+                  core.setOutput("run_id", String(run.id));
+                  core.info(`Successful Main workflow found: ${run.id}`);
+                  return;
+                }
+              }
+
+              if (attempt < maxAttempts) {
+                core.info("Main workflow is not completed yet. Waiting 10 seconds.");
+                await sleep(delayMs);
+              }
+            }
+
+            core.setFailed(
+              "Timed out waiting for the Main workflow to complete successfully."
+            );
+
+  # --------------------------------------------------
+  # 2. Download and validate build metadata
   # --------------------------------------------------
 
   get-build-metadata:
     name: Get Build Metadata
+    needs:
+      - find-main-run
+
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,26 +117,12 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
     steps:
-      - name: Validate Main workflow run ID
-        shell: bash
-        env:
-          MAIN_RUN_ID: ${{ inputs.main_run_id }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$MAIN_RUN_ID" =~ ^[0-9]+$ ]]; then
-            echo "ERROR: Invalid Main workflow run ID."
-            exit 1
-          fi
-
-          echo "Main workflow run ID: $MAIN_RUN_ID"
-
       - name: Download build metadata
         uses: actions/download-artifact@v4
         with:
           name: django-build-metadata
           path: build-metadata
-          run-id: ${{ inputs.main_run_id }}
+          run-id: ${{ needs.find-main-run.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate generated version and commit
@@ -101,19 +173,20 @@ jobs:
           cat build-metadata/version.txt
 
   # --------------------------------------------------
-  # 2. Publish Docker image and Helm chart
+  # 3. Publish Docker image and Helm chart
   # --------------------------------------------------
 
   publish:
     name: Publish Image and Helm Chart
 
     needs:
+      - find-main-run
       - get-build-metadata
 
     uses: ImpressicoTraining/common-workflows/.github/workflows/publish_images_and_charts.yaml@main
 
     with:
-      artifact_run_id: ${{ inputs.main_run_id }}
+      artifact_run_id: ${{ needs.find-main-run.outputs.run_id }}
       artifact_name: django-image
       source_sha: ${{ github.sha }}
       version: ${{ needs.get-build-metadata.outputs.version }}
