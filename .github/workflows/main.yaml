@@ -74,7 +74,7 @@ jobs:
       minor: "0"
       patch: "0"
     permissions:
-      contents: read
+      contents: write
 
   # --------------------------------------------------
   # 5. Docker build and security scan
