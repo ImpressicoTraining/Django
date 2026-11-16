@@ -1,0 +1,115 @@
+
+name: Publish Workflow
+
+on:
+  workflow_run:
+    workflows:
+      - Main Workflow
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+
+  # --------------------------------------------------
+  # 1. Get build metadata from Main workflow
+  # --------------------------------------------------
+
+  get-build-metadata:
+    name: Get Build Metadata
+
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      actions: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Download build metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: django-build-metadata
+          path: build-metadata
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read and validate generated version
+        id: version
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          VERSION_FILE="build-metadata/version.txt"
+
+          if [[ ! -f "$VERSION_FILE" ]]; then
+            echo "ERROR: Version metadata file not found."
+            exit 1
+          fi
+
+          VERSION="$(sed -n 's/^version=//p' "$VERSION_FILE")"
+          COMMIT_SHA="$(sed -n 's/^commit_sha=//p' "$VERSION_FILE")"
+
+          if [[ ! "$VERSION" =~ ^[0-9]{4}\.[0-9]+\.[0-9]+-DEV\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid DEV version: $VERSION"
+            exit 1
+          fi
+
+          if [[ "$COMMIT_SHA" != "$SOURCE_SHA" ]]; then
+            echo "ERROR: Metadata commit SHA does not match Main workflow commit."
+            exit 1
+          fi
+
+          echo "Generated version: $VERSION"
+          echo "Source commit: $SOURCE_SHA"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Display build metadata
+        shell: bash
+        run: |
+          echo "Build metadata:"
+          cat build-metadata/version.txt
+
+  # --------------------------------------------------
+  # 2. Publish Docker image and Helm chart
+  # --------------------------------------------------
+
+  publish:
+    name: Publish Image and Helm Chart
+
+    needs:
+      - get-build-metadata
+
+    uses: ImpressicoTraining/common-workflows/.github/workflows/publish_image_and_charts.yaml@main
+
+    with:
+      artifact_run_id: ${{ github.event.workflow_run.id }}
+      artifact_name: django-image
+      source_sha: ${{ github.event.workflow_run.head_sha }}
+      version: ${{ needs.get-build-metadata.outputs.version }}
+      local_image_name: impressicotraining/django
+      ghcr_image: ghcr.io/impressicotraining/django
+      chart_path: kubernetes
+
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+      id-token: write
+
+    secrets: inherit
