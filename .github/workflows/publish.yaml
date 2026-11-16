@@ -192,7 +192,7 @@ jobs:
       version: ${{ needs.get-build-metadata.outputs.version }}
       local_image_name: impressicotraining/django
       ghcr_image: ghcr.io/impressicotraining/django
-      chart_path: kubernetes
+      chart_path: Kubernetes
 
     permissions:
       contents: read
