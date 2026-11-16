@@ -153,7 +153,7 @@ jobs:
       - find-main-run
       - get-build-metadata
 
-    uses: ImpressicoTraining/common-workflows/.github/workflows/publish_image_and_charts.yaml@main
+    uses: ImpressicoTraining/common-workflows/.github/workflows/publish_images_and_charts.yaml@main
 
     with:
       artifact_run_id: ${{ needs.find-main-run.outputs.run_id }}
