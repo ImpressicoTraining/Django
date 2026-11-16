@@ -1,9 +1,11 @@
-name: Main workflow
+
+name: Main Workflow
 
 on:
   pull_request:
     branches:
       - main
+
   push:
     branches:
       - main
@@ -15,6 +17,7 @@ permissions:
   pull-requests: read
 
 jobs:
+
   allow-to-merge:
     name: Allow To Merge
     if: github.event_name == 'pull_request'
@@ -22,9 +25,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
- 
+
   codeql-analysis:
-    name: CodeQL Python Analysis
+    name: CodeQL Analysis
     uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yaml@main
     with:
       language: python
@@ -33,32 +36,56 @@ jobs:
       security-events: write
       actions: read
 
-  django-unit-tests:
-    name: Django Unit Tests and Coverage
+  unit-tests:
+    name: Unit Tests and Coverage
     uses: ImpressicoTraining/common-workflows/.github/workflows/unit-tests.yaml@main
     with:
       application: Django
-
       setup_command: |
         python -m pip install --upgrade pip
         python -m pip install uv
         uv sync --no-default-groups --group test
-
       test_command: |
         uv run --locked --no-default-groups --group test --with pytest-cov pytest --cov --cov-branch --cov-report=term-missing --cov-fail-under=75
-
     permissions:
       contents: read
 
+  generate-dev-version:
+    name: Generate DEV Version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ImpressicoTraining/common-workflows/.github/workflows/generate-version.yaml@main
+    with:
+      minor: "0"
+      patch: "0"
+    permissions:
+      contents: write
+
   docker-build:
-    name: Build Django Docker Image
+    name: Docker Build and Security Scan
+
+    needs:
+      - generate-dev-version
+
+    if: |
+      always() &&
+      (
+        github.event_name == 'pull_request' ||
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.generate-dev-version.result == 'success'
+        )
+      )
+
     uses: ImpressicoTraining/common-workflows/.github/workflows/docker-build.yaml@main
+
     with:
       application: django
       image_name: impressicotraining/django
-      image_tag: ci-${{ github.run_number }}-${{ github.sha }}
+      image_tag: ${{ github.event_name == 'push' && needs.generate-dev-version.outputs.version || format('ci-{0}-{1}', github.run_number, github.sha) }}
+      upload_image_artifact: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      artifact_name: django-image
+
     permissions:
       contents: read
-      packages: write
-      id-token: write
-
