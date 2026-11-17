@@ -1,0 +1,40 @@
+name: Lint Workflow
+
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and Code Quality
+    uses: ImpressicoTraining/common-workflows/.github/workflows/lint.yaml@main
+
+    with:
+      python_lint: true
+      python_version: "3.12"
+      python_paths: "."
+
+      yaml_lint: true
+      yaml_paths: ".github/workflows"
+
+      dockerfile_lint: true
+      dockerfile_paths: "."
+
+      shell_lint: false
+
+      helm_lint: true
+      helm_chart_paths: "kubernetes"
+
+    permissions:
+      contents: read
