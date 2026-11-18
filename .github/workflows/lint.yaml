@@ -18,7 +18,7 @@ permissions:
 jobs:
   lint:
     name: Lint and Code Quality
-    uses: ImpressicoTraining/common-workflows/.github/workflows/lint.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/lint.yaml@main
 
     with:
       python_lint: true
