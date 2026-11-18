@@ -31,7 +31,9 @@ jobs:
       dockerfile_lint: true
       dockerfile_paths: "."
 
-      shell_lint: false
+      shell_lint: true
+
+      github_actions_lint: true
 
       helm_lint: true
       helm_chart_paths: "kubernetes"
