@@ -33,6 +33,8 @@ jobs:
 
       shell_lint: true
 
+      github_actions_lint: true
+
       helm_lint: true
       helm_chart_paths: "kubernetes"
 
