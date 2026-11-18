@@ -25,7 +25,7 @@ jobs:
   allow-to-merge:
     name: Allow To Merge
     if: github.event_name == 'pull_request'
-    uses: ImpressicoTraining/common-workflows/.github/workflows/allow-to-merge.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/allow-to-merge.yaml@main
     permissions:
       contents: read
       pull-requests: read
@@ -36,7 +36,7 @@ jobs:
 
   codeql-analysis:
     name: CodeQL Analysis
-    uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/codeql-analysis.yaml@main
     with:
       language: python
     permissions:
@@ -50,7 +50,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests and Coverage
-    uses: ImpressicoTraining/common-workflows/.github/workflows/unit-tests.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/unit-tests.yaml@main
     with:
       application: Django
       setup_command: |
@@ -69,7 +69,7 @@ jobs:
   generate-dev-version:
     name: Generate DEV Version
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ImpressicoTraining/common-workflows/.github/workflows/generate-version.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/generate-version.yaml@main
     with:
       minor: "0"
       patch: "0"
@@ -95,10 +95,10 @@ jobs:
           needs.generate-dev-version.result == 'success'
         )
       )
-    uses: ImpressicoTraining/common-workflows/.github/workflows/docker-build.yaml@main
+    uses: TrainingCI/common-workflows/.github/workflows/docker-build.yaml@main
     with:
       application: django
-      image_name: impressicotraining/django
+      image_name: trainingCI/django
       image_tag: ${{ github.event_name == 'push' && needs.generate-dev-version.outputs.version || format('ci-{0}-{1}', github.run_number, github.sha) }}
       upload_image_artifact: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       artifact_name: django-image
