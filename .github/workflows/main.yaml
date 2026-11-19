@@ -58,7 +58,12 @@ jobs:
         python -m pip install uv
         uv sync --no-default-groups --group test
       test_command: |
-        uv run --locked --no-default-groups --group test --with pytest-cov pytest --cov --cov-branch --cov-report=term-missing --cov-fail-under=75
+        uv run --locked --no-default-groups --group test --with pytest-cov pytest \
+        --cov --cov-branch \ 
+        --cov-report=term-missing \
+        --cov-report = html:htmlcov \
+        --cov-report = xml:coverage.xml \
+        --cov-fail-under=75
     permissions:
       contents: read
 
