@@ -61,8 +61,8 @@ jobs:
         uv run --locked --no-default-groups --group test --with pytest-cov pytest \
         --cov --cov-branch \ 
         --cov-report=term-missing \
-        --cov-report = html:htmlcov \
-        --cov-report = xml:coverage.xml \
+        --cov-report=html:htmlcov \
+        --cov-report=xml:coverage.xml \
         --cov-fail-under=75
     permissions:
       contents: read
