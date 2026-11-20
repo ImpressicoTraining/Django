@@ -37,6 +37,7 @@ jobs:
   codeql-analysis:
     name: CodeQL Analysis
     uses: ImpressicoTraining/common-workflows/.github/workflows/codeql-analysis.yaml@main
+    secrets: inherit
     with:
       language: python
     permissions:
